@@ -1,5 +1,7 @@
 from zk import ZK, const
-import requests, json, time
+import requests
+import json
+import time
 
 
 # url = "http://103.136.40.46:72/api/resource/zkaccess"
@@ -27,11 +29,17 @@ class ZKConnect:
 
     def make_connection(self):
         try:
-            zk = ZK(self.ip, self.port, timeout=5, password=self.password, force_udp=True, ommit_ping=False)
+            zk = ZK(
+                self.ip,
+                self.port,
+                timeout=5,
+                password=self.password,
+                force_udp=True,
+                ommit_ping=False)
             self.conn = zk.connect()
             self.close = False
 
-        except:
+        except BaseException:
             raise Exception("can't connect")
 
     def kill_connection(self):
@@ -41,10 +49,9 @@ class ZKConnect:
         #     pass
         self.conn.disconnect()
 
-
     def is_connected(self):
         return self.conn.is_connect
-    
+
     def live_capture(self, url, headers):
         print("here")
         self.live = True
@@ -53,7 +60,7 @@ class ZKConnect:
             if self.close:
                 print("live capture closed")
                 break
-            
+
             if attendance:
                 print(attendance)
                 # payload = {}
@@ -64,13 +71,12 @@ class ZKConnect:
                 # payload["punch"] = attendance.punch
                 # pyload["status"] = attendance.status
                 # payload["uid"] = attendance.uid
-            
+
                 # payload_json = json.dumps(payload)
                 # post_req(url, headers, payload_json)
         self.live = False
-           
+
+
 def post_req(url, headers, data):
     response = requests.request("POST", url, headers=headers, data=data)
     return response
-
-
