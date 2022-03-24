@@ -36,8 +36,9 @@ class ZKConnect:
 
     def kill_connection(self):
         self.close = True
-        while(self.live):
-            pass
+        time.sleep(2)
+        # while(self.live):
+        #     pass
         self.conn.disconnect()
 
 
@@ -48,7 +49,7 @@ class ZKConnect:
         print("here")
         self.live = True
         for attendance in self.conn.live_capture():
-            print("live cappture started")
+            print("live cappture started", url)
             if self.close:
                 print("live capture closed")
                 break
