@@ -82,14 +82,15 @@ def devices_gui(rows):
         [
             sg.Text("URL"), sg.InputText(
                 value.get('url'), k='url'), sg.Text("Header"), sg.InputText(
-                    value.get('header'), k='header'),sg.Button("Sync", k="sync")], [
+                value.get('header'), k='header'), sg.Button(
+                    "Sync", k="sync")], [
                         sg.Text(
-                        "IP", size=(
-                            45, 1)), sg.Text(
-                                "PORT", size=(
-                                    45, 1)), sg.Text(
-                                        "PASSWORD", size=(
-                                            45, 1))]]
+                            "IP", size=(
+                                45, 1)), sg.Text(
+                                    "PORT", size=(
+                                        45, 1)), sg.Text(
+                                            "PASSWORD", size=(
+                                                45, 1))]]
 
     connections = {}
 
@@ -118,15 +119,17 @@ def devices_gui(rows):
             break
         if event == 'sync':
             data = read_failed_requests('.failed')
-            if data != None:
+            if data is not None:
                 new_data = []
                 for d in data:
-                    res = post_req(value['url'], {'Authorization': value['header']}, d.rstrip())
+                    res = post_req(
+                        value['url'], {
+                            'Authorization': value['header']}, d.rstrip())
                     if res.status_code != 200:
                         new_data.append(d)
                 with open('.failed', 'w') as file:
                     file.writelines(new_data)
-            
+
         elif len(event) == 1:
             try:
                 ip = value[f'ip{event}']

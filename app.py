@@ -14,7 +14,7 @@ class ZKConnect:
         self.close = False
         self.live = False
         self.header = {}
-        
+
     def set_default(self):
         self.ip = '192.168.1.201'
         self.port = 4370
@@ -48,7 +48,7 @@ class ZKConnect:
     def live_capture(self, url, header):
         self.header['Authorization'] = header
         self.live = True
-        
+
         for attendance in self.conn.live_capture():
             if self.close:
                 break
@@ -57,7 +57,7 @@ class ZKConnect:
                 print(attendance)
                 payload = {}
                 payload["user_id"] = attendance.user_id
-                date, time  = attendance.timestamp.isoformat().split("T")
+                date, time = attendance.timestamp.isoformat().split("T")
                 payload["date"] = date
                 payload["time"] = time
                 payload["punch"] = attendance.punch
@@ -69,7 +69,7 @@ class ZKConnect:
                 res = post_req(url, self.header, payload_json)
                 if res.status_code != 200:
                     write_failed_requests('.failed', payload_json)
-                
+
         self.live = False
 
 
@@ -82,14 +82,11 @@ def write_failed_requests(FileName, req_data):
     if not os.path.exists(FileName):
         with open(FileName, 'w') as file:
             file.writelines([])
-    
-    with open(FileName) as file:
-        data = file.readlines()
-    data.append(req_data+'\n')
 
-    with open(FileName, 'w') as file:
-        file.writelines(data)
-            
+    with open(FileName, 'a') as file:
+        file.write(req_data + '\n')
+
+
 def read_failed_requests(FileName):
     try:
         with open(FileName) as file:
