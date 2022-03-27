@@ -95,3 +95,31 @@ def read_failed_requests(FileName):
 
     except FileNotFoundError:
         return None
+
+
+class AutoSync():
+    def __init__(self, t, url, header):
+        self.t = t
+        self.url = url
+        self.header = header
+        self.s = True
+
+    def reset_conf(self, url, header):
+        self.url = url
+        self.header = header
+
+    def stop_sync(self):
+        self.s = False
+
+    def sync(self):
+        while self.s:
+            time.sleep(self.t)
+            data = read_failed_requests('.failed')
+            if data is not None and len(data) > 0:
+                new_data = []
+                for d in data:
+                    res = post_req(self.url, self.header, d.rstrip())
+                    if res.status_code != 200:
+                        new_data.append(d)
+                with open('.failed', 'w') as file:
+                    file.writelines(new_data)

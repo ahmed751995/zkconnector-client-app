@@ -1,7 +1,7 @@
 import PySimpleGUI as sg
 import time
 import re
-from app import ZKConnect, read_failed_requests, post_req, write_failed_requests
+from app import ZKConnect, read_failed_requests, post_req, AutoSync
 from threading import Thread
 
 
@@ -82,15 +82,14 @@ def devices_gui(rows):
         [
             sg.Text("URL"), sg.InputText(
                 value.get('url'), k='url'), sg.Text("Header"), sg.InputText(
-                value.get('header'), k='header'), sg.Button(
-                    "Sync", k="sync")], [
-                        sg.Text(
-                            "IP", size=(
-                                45, 1)), sg.Text(
-                                    "PORT", size=(
-                                        45, 1)), sg.Text(
-                                            "PASSWORD", size=(
-                                                45, 1))]]
+                value.get('header'), k='header')], [
+            sg.Text(
+                "IP", size=(
+                    45, 1)), sg.Text(
+                "PORT", size=(
+                    45, 1)), sg.Text(
+                "PASSWORD", size=(
+                    45, 1))]]
 
     connections = {}
 
@@ -110,27 +109,26 @@ def devices_gui(rows):
         resizable=True,
         finalize=True,
         enable_close_attempted_event=True)
+    threads = {}
+
+    auto_sync = AutoSync(20, value['url'], {'Authorization': value['header']})
+
+    Thread(target=auto_sync.sync).start()
+
     while True:
         event, value = window.read()
+        auto_sync.reset_conf(value['url'], {'Authorization': value['header']})
 
         if event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT:
+            auto_sync.stop_sync()
+            for c in connections.keys():
+                connections[c].kill_connection()
+
             if sg.popup_yes_no('Do you want to save your changes') == 'Yes':
                 write_config(rows, value, '.data')
             break
-        if event == 'sync':
-            data = read_failed_requests('.failed')
-            if data is not None:
-                new_data = []
-                for d in data:
-                    res = post_req(
-                        value['url'], {
-                            'Authorization': value['header']}, d.rstrip())
-                    if res.status_code != 200:
-                        new_data.append(d)
-                with open('.failed', 'w') as file:
-                    file.writelines(new_data)
 
-        elif len(event) == 1:
+        if len(event) == 1:
             try:
                 ip = value[f'ip{event}']
                 port = int(value[f'port{event}'])
@@ -138,9 +136,11 @@ def devices_gui(rows):
 
                 connections[event] = ZKConnect(ip, port, password)
                 connections[event].make_connection()
+
                 Thread(
                     target=connections[event].live_capture, args=(
                         value['url'], value['header'])).start()
+
                 if(connections[event].is_connected()):
                     sg.SystemTray.notify(
                         'Success', 'Device connected successfully')
