@@ -81,7 +81,7 @@ def devices_gui(rows):
     try:
         value = read_config('.data')
     except FileNotFoundError:
-        pass
+        value = {}
 
     layout = [
         [
@@ -111,7 +111,7 @@ def devices_gui(rows):
         enable_close_attempted_event=True)
     
 
-    auto_sync = AutoSync(1000, value['url'], {'Authorization': value['header']})
+    auto_sync = AutoSync(1000, value.get('url'), {'Authorization': value.get('header')})
 
     # Thread(target=auto_sync.sync).start()
 
@@ -124,18 +124,13 @@ def devices_gui(rows):
         
         auto_sync.reset_conf(t, value['url'], {'Authorization': value['header']})
         if not auto_sync.sync_status():
-            proc = multiprocessing.Process(target=auto_sync.sync, args=())
-            # Thread(target=auto_sync.sync).start()
-            proc.start()
+            # proc = multiprocessing.Process(target=auto_sync.sync, args=())
+            Thread(target=auto_sync.sync).start()
+            # proc.start()
         # auto_sync.reset_conf(value['url'], {'Authorization': value['header']})
 
         
         if event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT:
-            # auto_sync.stop_sync()
-            proc.terminate()
-            for c in connections.keys():
-                connections[c].kill_connection()
-
             if sg.popup_yes_no('Do you want to save your changes') == 'Yes':
                 write_config(rows, value, '.data')
             break
@@ -172,6 +167,10 @@ def devices_gui(rows):
                     'Error', 'Device not connected or data is wrong')
 
     window.close()
+    auto_sync.stop_sync()
+            # proc.terminate()
+    for c in connections.keys():
+        connections[c].kill_connection()
 
 
 def create_gui():
