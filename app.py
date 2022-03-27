@@ -3,7 +3,7 @@ import requests
 import json
 import time
 import os
-
+import sys
 
 class ZKConnect:
     def __init__(self, ip, port, password):
@@ -39,7 +39,7 @@ class ZKConnect:
     def kill_connection(self):
         self.close = True
         while(self.live):
-            time.sleep(1)
+            time.sleep(.1)
         self.conn.disconnect()
 
     def is_connected(self):
@@ -102,16 +102,21 @@ class AutoSync():
         self.t = t
         self.url = url
         self.header = header
-        self.s = True
+        self.s = False
 
-    def reset_conf(self, url, header):
+    def reset_conf(self, t, url, header):
         self.url = url
         self.header = header
+        self.t = t
 
     def stop_sync(self):
         self.s = False
-
+        
+    def sync_status(self):
+        return self.s
+    
     def sync(self):
+        self.s = True
         while self.s:
             time.sleep(self.t)
             data = read_failed_requests('.failed')

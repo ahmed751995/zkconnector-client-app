@@ -3,7 +3,9 @@ import time
 import re
 from app import ZKConnect, read_failed_requests, post_req, AutoSync
 from threading import Thread
+import multiprocessing
 
+sg.theme('DarkAmber')
 
 def window_1_gui():
     '''
@@ -39,8 +41,10 @@ def write_config(rows, value, FileName):
     data = []
     data.append(value['url'] + '\n')
     data.append(value['header'] + '\n')
+    data.append(value['time']+'\n')
+    
     for r in range(rows):
-        line = value[f'ip{r}'] + ' ' + value[f'port{r}'] + \
+        line = value[f'n{r}'] + ' ' + value[f'ip{r}'] + ' ' + value[f'port{r}'] + \
             ' ' + value[f'pass{r}'] + '\n'
         data.append(line)
 
@@ -59,11 +63,12 @@ def read_config(FileName):
     value = {}
     value['url'] = data[0].rstrip()
     value['header'] = data[1].rstrip()
+    value['time'] = data[2].rstrip()
     i = 0
-    for line in data[2:]:
+    for line in data[3:]:
         d = line.rstrip().split()
-        if len(d) == 3:
-            value[f'ip{i}'], value[f'port{i}'], value[f'pass{i}'] = d
+        if len(d) == 4:
+            value[f'n{i}'], value[f'ip{i}'], value[f'port{i}'], value[f'pass{i}'] = d
             i += 1
 
     return value
@@ -80,21 +85,16 @@ def devices_gui(rows):
 
     layout = [
         [
-            sg.Text("URL"), sg.InputText(
-                value.get('url'), k='url'), sg.Text("Header"), sg.InputText(
-                value.get('header'), k='header')], [
-            sg.Text(
-                "IP", size=(
-                    45, 1)), sg.Text(
-                "PORT", size=(
-                    45, 1)), sg.Text(
-                "PASSWORD", size=(
-                    45, 1))]]
+        sg.Text("URL"), sg.InputText(value.get('url'), k='url'),
+        sg.Text("Header"), sg.InputText(value.get('header'), k='header'),
+        sg.Text("Sync Time"), sg.InputText(value.get('time'), k='time')],
+        [sg.Text("Device", size=(45, 1)), sg.Text("IP", size=(45, 1)), sg.Text("PORT", size=(45, 1)), sg.Text("PASSWORD", size=(45, 1))]]
 
     connections = {}
 
-    for r in range(rows):
+    for r in range(rows): #int(len(value.keys())/3) - 1
         row = [
+            sg.InputText(value.get(f'n{r}'), k=f'n{r}'),
             sg.InputText(
                 value.get(f'ip{r}'), k=f'ip{r}'), sg.InputText(
                 value.get(f'port{r}'), k=f'port{r}'), sg.InputText(
@@ -109,18 +109,30 @@ def devices_gui(rows):
         resizable=True,
         finalize=True,
         enable_close_attempted_event=True)
-    threads = {}
+    
 
-    auto_sync = AutoSync(20, value['url'], {'Authorization': value['header']})
+    auto_sync = AutoSync(1000, value['url'], {'Authorization': value['header']})
 
-    Thread(target=auto_sync.sync).start()
+    # Thread(target=auto_sync.sync).start()
 
     while True:
         event, value = window.read()
-        auto_sync.reset_conf(value['url'], {'Authorization': value['header']})
+        try:
+            t = float(value.get('time')) * 60
+        except:
+            t = 0
+        
+        auto_sync.reset_conf(t, value['url'], {'Authorization': value['header']})
+        if not auto_sync.sync_status():
+            proc = multiprocessing.Process(target=auto_sync.sync, args=())
+            # Thread(target=auto_sync.sync).start()
+            proc.start()
+        # auto_sync.reset_conf(value['url'], {'Authorization': value['header']})
 
+        
         if event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT:
-            auto_sync.stop_sync()
+            # auto_sync.stop_sync()
+            proc.terminate()
             for c in connections.keys():
                 connections[c].kill_connection()
 
