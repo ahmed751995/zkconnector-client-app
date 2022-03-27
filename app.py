@@ -2,15 +2,8 @@ from zk import ZK, const
 import requests
 import json
 import time
+import os
 
-
-# url = "http://103.136.40.46:72/api/resource/zkaccess"
-
-# zk = ZK('192.168.1.201', port=4370, timeout=5, password=0, force_udp=True, ommit_ping=False)
-# headers = {
-#   'Authorization': 'token fdc04965d6f8c41:1044dbe6947eff3',
-#   'Cookie': 'full_name=Guest; sid=Guest; system_user=no; user_id=Guest; user_image='
-# }
 
 class ZKConnect:
     def __init__(self, ip, port, password):
@@ -20,7 +13,8 @@ class ZKConnect:
         self.conn = None
         self.close = False
         self.live = False
-
+        self.header = {}
+        
     def set_default(self):
         self.ip = '192.168.1.201'
         self.port = 4370
@@ -44,39 +38,63 @@ class ZKConnect:
 
     def kill_connection(self):
         self.close = True
-        time.sleep(2)
-        # while(self.live):
-        #     pass
+        while(self.live):
+            time.sleep(1)
         self.conn.disconnect()
 
     def is_connected(self):
         return self.conn.is_connect
 
-    def live_capture(self, url, headers):
-        print("here")
+    def live_capture(self, url, header):
+        self.header['Authorization'] = header
         self.live = True
+        
         for attendance in self.conn.live_capture():
-            print("live cappture started", url)
             if self.close:
-                print("live capture closed")
                 break
 
             if attendance:
                 print(attendance)
-                # payload = {}
-                # payload["user_id"] = attendance.user_id
-                # date, time  = attendance.timestamp.isoformat().split("T")
-                # payload["date"] = date
-                # payload["time"] = time
-                # payload["punch"] = attendance.punch
-                # pyload["status"] = attendance.status
-                # payload["uid"] = attendance.uid
+                payload = {}
+                payload["user_id"] = attendance.user_id
+                date, time  = attendance.timestamp.isoformat().split("T")
+                payload["date"] = date
+                payload["time"] = time
+                payload["punch"] = attendance.punch
+                payload["status"] = attendance.status
+                payload["uid"] = attendance.uid
 
-                # payload_json = json.dumps(payload)
-                # post_req(url, headers, payload_json)
+                payload_json = json.dumps(payload)
+
+                res = post_req(url, self.header, payload_json)
+                if res.status_code != 200:
+                    write_failed_requests('.failed', payload_json)
+                
         self.live = False
 
 
-def post_req(url, headers, data):
-    response = requests.request("POST", url, headers=headers, data=data)
+def post_req(url, header, data):
+    response = requests.request("POST", url, headers=header, data=data)
     return response
+
+
+def write_failed_requests(FileName, req_data):
+    if not os.path.exists(FileName):
+        with open(FileName, 'w') as file:
+            file.writelines([])
+    
+    with open(FileName) as file:
+        data = file.readlines()
+    data.append(req_data+'\n')
+
+    with open(FileName, 'w') as file:
+        file.writelines(data)
+            
+def read_failed_requests(FileName):
+    try:
+        with open(FileName) as file:
+            data = file.readlines()
+        return data
+
+    except FileNotFoundError:
+        return None
